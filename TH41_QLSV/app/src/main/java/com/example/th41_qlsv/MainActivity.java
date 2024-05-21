@@ -56,8 +56,11 @@ public class MainActivity extends AppCompatActivity {
             String sql = "CREATE TABLE tbllop(malop TEXT primary key, tenlop TEXT, siso INTEGER)";
             mydatabase.execSQL(sql);
         } catch (Exception e) {
-            Log.e("ERROR", "Bang da ton tai");
+            Log.e("ERROR", "Bảng đã tồn tại");
         }
+
+        // Tải dữ liệu từ CSDL khi ứng dụng khởi động
+        loadData();
 
         btnDelete.setOnClickListener(view -> {
             String malop = edtMaLop.getText().toString();
@@ -68,12 +71,14 @@ public class MainActivity extends AppCompatActivity {
             int n = mydatabase.delete("tbllop", "malop = ?", new String[]{malop});
             String msg = n == 0 ? "Không ghi nhận trong CSDL" : "Bản ghi thứ " + n + " đã được xóa";
             Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
+            loadData(); // Cập nhật ListView
         });
 
         btnUpdate.setOnClickListener(view -> {
-            if (!validateInput()) return;
-            int siso = Integer.parseInt(edtSiSo.getText().toString());
+            if (!validateInput()) return; //!validateInput() để kiểm tra lỗi chính xác
             String malop = edtMaLop.getText().toString();
+            String tenlop = edtTenLop.getText().toString();
+            int siso = Integer.parseInt(edtSiSo.getText().toString());
 
             if (!isRecordExists(malop)) {
                 Toast.makeText(MainActivity.this, "Mã lớp không tồn tại", Toast.LENGTH_SHORT).show();
@@ -81,14 +86,17 @@ public class MainActivity extends AppCompatActivity {
             }
 
             ContentValues myvalue = new ContentValues();
+            myvalue.put("tenlop", tenlop); // Thêm dòng này để cập nhật tenlop
             myvalue.put("siso", siso);
+
             int n = mydatabase.update("tbllop", myvalue, "malop = ?", new String[]{malop});
             String msg = n == 0 ? "Không có bản ghi trong CSDL" : "Bản ghi số " + n + " đã được cập nhật.";
             Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
+            loadData(); // Cập nhật ListView
         });
 
         bntInsert.setOnClickListener(view -> {
-            if (!validateInput()) return;
+            if (validateInput()) return;
             String malop = edtMaLop.getText().toString();
             String tenlop = edtTenLop.getText().toString();
             int siso = Integer.parseInt(edtSiSo.getText().toString());
@@ -104,6 +112,7 @@ public class MainActivity extends AppCompatActivity {
             myvalue.put("siso", siso);
             String msg = mydatabase.insert("tbllop", null, myvalue) == -1 ? "Không thể ghi nhận, hãy thử lại!" : "Đã ghi nhận thông tin";
             Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
+            loadData(); // Cập nhật ListView
         });
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
@@ -111,6 +120,21 @@ public class MainActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+    }
+
+    private void loadData() {
+        mylist.clear();
+        Cursor cursor = mydatabase.rawQuery("SELECT * FROM tbllop", null);
+        if (cursor.moveToFirst()) {
+            do {
+                String malop = cursor.getString(cursor.getColumnIndexOrThrow("malop"));
+                String tenlop = cursor.getString(cursor.getColumnIndexOrThrow("tenlop"));
+                int siso = cursor.getInt(cursor.getColumnIndexOrThrow("siso"));
+                mylist.add("Mã lớp: " + malop + ", Tên lớp: " + tenlop + ", Sĩ số: " + siso);
+            } while (cursor.moveToNext());
+        }
+        cursor.close();
+        myadapter.notifyDataSetChanged();
     }
 
     private boolean validateInput() {
